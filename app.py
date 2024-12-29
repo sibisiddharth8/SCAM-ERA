@@ -36,37 +36,35 @@ def upload_file():
     if file.filename == '':
         return jsonify({'error': 'No file selected'}), 400
 
-    if file:
-        # Handle the uploaded file
+    if file and allowed_file(file.filename):
         timestamp = int(current_time())
         uploaded_filename = f"uploaded_video_{timestamp}.mp4"
         uploaded_video_path = os.path.join(app.config['UPLOAD_FOLDER'], uploaded_filename)
         file.save(uploaded_video_path)
 
-        # Output video path
         processed_filename = f"processed_video_{timestamp}.mp4"
         processed_video_path = os.path.join(app.config['OUTPUT_FOLDER'], processed_filename)
 
-        # Call deepfake detection
-        module = importlib.import_module("deepfake_detector")
-        function = getattr(module, "run")
-        result_from_det = function(uploaded_video_path, processed_video_path)
+        try:
+            module = importlib.import_module("deepfake_detector")
+            function = getattr(module, "run")
+            result_from_det = function(uploaded_video_path, processed_video_path)
+        except Exception as e:
+            app.logger.error(f"Error processing video: {e}")
+            return jsonify({'error': 'Processing failed. Check the server logs.'}), 500
 
-        # Video information for the response
         video_info = {
             'name': file.filename,
             'size': f"{os.path.getsize(uploaded_video_path) / 1024:.2f} KB",
             'uploaded_at': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC'),
             'authenticity_score': result_from_det,
-            'uploaded_video_path': f'/static/uploads/{uploaded_filename}',  # Path for uploaded video
-            'processed_video_path': f'/static/outputs/{processed_filename}'  # Path for processed video
+            'uploaded_video_path': f'/static/uploads/{uploaded_filename}',
+            'processed_video_path': f'/static/outputs/{processed_filename}'
         }
 
-        # Return video paths and other info for front end
-        return jsonify({
-            'video_info': video_info
-        })
+        return jsonify({'video_info': video_info})
 
+    return jsonify({'error': 'Invalid file type'}), 400
 
 
 @app.route('/result')

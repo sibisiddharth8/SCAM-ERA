@@ -73,5 +73,6 @@ def result():
     return render_template('result.html', video_info=json.loads(video_info))
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    from waitress import serve
+    serve(app, host="0.0.0.0", port=5000)
 
